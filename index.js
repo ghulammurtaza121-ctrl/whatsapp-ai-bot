@@ -28,7 +28,12 @@ app.get('/webhook', (req, res) => {
 });
 
 // WhatsApp Messages Handling (POST Request)
+// WhatsApp Messages Handling (POST Request)
 app.post('/webhook', (req, res) => {
+    console.log('Incoming webhook payload:', JSON.stringify(req.body, null, 2));
+    res.sendStatus(200);
+});
+
   res.sendStatus(200);
 });
 
