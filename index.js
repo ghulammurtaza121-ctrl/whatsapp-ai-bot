@@ -1,8 +1,11 @@
 const express = require('express');
+const axios = require('axios');
 const app = express();
 app.use(express.json());
 
 const VERIFY_TOKEN = process.env.VERIFY_TOKEN || '12345';
+const WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN;
+const PHONE_NUMBER_ID = process.env.PHONE_NUMBER_ID;
 
 // Root Route (Server Active check)
 app.get('/', (req, res) => {
@@ -27,10 +30,52 @@ app.get('/webhook', (req, res) => {
     }
 });
 
-// WhatsApp Messages Handling (POST Request)
-app.post('/webhook', (req, res) => {
-    console.log('Incoming webhook payload:', JSON.stringify(req.body, null, 2));
-    res.sendStatus(200);
+// WhatsApp Messages Handling & AI Reply (POST Request)
+app.post('/webhook', async (req, res) => {
+    res.sendStatus(200); // Meta ko foran acknowledge karne ke liye
+
+    try {
+        const body = req.body;
+        
+        if (body.object) {
+            if (
+                body.entry &&
+                body.entry[0].changes &&
+                body.entry[0].changes[0].value.messages &&
+                body.entry[0].changes[0].value.messages[0]
+            ) {
+                const message = body.entry[0].changes[0].value.messages[0];
+                const from = message.from; // User ka WhatsApp number
+                const msgBody = message.text ? message.text.body : ''; // User ka bheja hua message
+
+                console.log(`Received message from ${from}: ${msgBody}`);
+
+                if (msgBody) {
+                    // Filhal aik smart automated/AI jaisa response taiyar karte hain
+                    const aiReplyText = `Aap ne kaha: "${msgBody}". Main aik AI assistant hoon, aap ka paigham mil gaya hai!`;
+
+                    // WhatsApp Cloud API ke zariye wapas message bhejna
+                    await axios({
+                        method: 'POST',
+                        url: `https://graph.facebook.com/v17.0/${PHONE_NUMBER_ID}/messages`,
+                        headers: {
+                            'Authorization': `Bearer ${WHATSAPP_TOKEN}`,
+                            'Content-Type': 'application/json',
+                        },
+                        data: {
+                            messaging_product: 'whatsapp',
+                            to: from,
+                            text: { body: aiReplyText },
+                        },
+                    });
+
+                    console.log('Reply sent successfully!');
+                }
+            }
+        }
+    } catch (error) {
+        console.error('Error handling webhook:', error.response ? error.response.data : error.message);
+    }
 });
 
 const PORT = process.env.PORT || 10000;
