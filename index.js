@@ -1,15 +1,20 @@
 const express = require('express');
 const axios = require('axios');
+const { GoogleGenAI } = require('@google/genai');
+
 const app = express();
 app.use(express.json());
 
-const VERIFY_TOKEN = process.env.VERIFY_TOKEN || '12345';
+const VERIFY_TOKEN = process.env.VERIFY_TOKEN;
 const WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN;
 const PHONE_NUMBER_ID = process.env.PHONE_NUMBER_ID;
 
+// Initialize Gemini client
+const ai = new GoogleGenAI();
+
 // Root Route (Server Active check)
 app.get('/', (req, res) => {
-    res.send('Server is active and running!');
+    res.send('Server is active and running with Gemini AI!');
 });
 
 // Meta Webhook Verification (GET Request)
@@ -30,47 +35,49 @@ app.get('/webhook', (req, res) => {
     }
 });
 
-// WhatsApp Messages Handling & AI Reply (POST Request)
+// WhatsApp Messages Handling & Gemini AI Reply (POST Request)
 app.post('/webhook', async (req, res) => {
     res.sendStatus(200); // Meta ko foran acknowledge karne ke liye
 
     try {
         const body = req.body;
-        
-        if (body.object) {
-            if (
-                body.entry &&
-                body.entry[0].changes &&
-                body.entry[0].changes[0].value.messages &&
-                body.entry[0].changes[0].value.messages[0]
-            ) {
-                const message = body.entry[0].changes[0].value.messages[0];
-                const from = message.from; // User ka WhatsApp number
-                const msgBody = message.text ? message.text.body : ''; // User ka bheja hua message
 
-                console.log(`Received message from ${from}: ${msgBody}`);
+        if (body.object === 'whatsapp_business_account') {
+            const entry = body.entry?.[0];
+            const changes = entry?.changes?.[0];
+            const value = changes?.value;
+            const message = value?.messages?.[0];
 
-                if (msgBody) {
-                    // Filhal aik smart automated/AI jaisa response taiyar karte hain
-                    const aiReplyText = `Aap ne kaha: "${msgBody}". Main aik AI assistant hoon, aap ka paigham mil gaya hai!`;
+            if (message && message.type === 'text') {
+                const senderPhone = message.from; 
+                const userMessage = message.text.body; 
+                console.log(`Received message from ${senderPhone}: ${userMessage}`);
 
-                    // WhatsApp Cloud API ke zariye wapas message bhejna
-                    await axios({
-                        method: 'POST',
-                        url: `https://graph.facebook.com/v17.0/${PHONE_NUMBER_ID}/messages`,
+                // Call Google Gemini AI for smart reply
+                const response = await ai.models.generateContent({
+                    model: 'gemini-1.5-flash',
+                    contents: userMessage,
+                });
+
+                const aiReply = response.text || "Main abhi iska jawab nahi de sakta.";
+
+                // Send reply back via WhatsApp Cloud API
+                await axios.post(
+                    `https://graph.facebook.com/v17.0/${PHONE_NUMBER_ID}/messages`,
+                    {
+                        messaging_product: 'whatsapp',
+                        to: senderPhone,
+                        text: { body: aiReply },
+                    },
+                    {
                         headers: {
-                            'Authorization': `Bearer ${WHATSAPP_TOKEN}`,
+                            Authorization: `Bearer ${WHATSAPP_TOKEN}`,
                             'Content-Type': 'application/json',
                         },
-                        data: {
-                            messaging_product: 'whatsapp',
-                            to: from,
-                            text: { body: aiReplyText },
-                        },
-                    });
+                    }
+                );
 
-                    console.log('Reply sent successfully!');
-                }
+                console.log('AI Reply sent successfully!');
             }
         }
     } catch (error) {
@@ -78,6 +85,7 @@ app.post('/webhook', async (req, res) => {
     }
 });
 
+// Server Port Binding
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
