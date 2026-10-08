@@ -1,6 +1,6 @@
 const express = require('express');
 const axios = require('axios');
-const { GoogleGenAI } = require('@google/genai');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
 
 const app = express();
 app.use(express.json());
@@ -9,15 +9,13 @@ const VERIFY_TOKEN = process.env.VERIFY_TOKEN;
 const WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN;
 const PHONE_NUMBER_ID = process.env.PHONE_NUMBER_ID;
 
-// Initialize Gemini client
-const ai = new GoogleGenAI();
+// Initialize Gemini client with API Key
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-// Root Route (Server Active check)
 app.get('/', (req, res) => {
     res.send('Server is active and running with Gemini AI!');
 });
 
-// Meta Webhook Verification (GET Request)
 app.get('/webhook', (req, res) => {
     const mode = req.query['hub.mode'];
     const token = req.query['hub.verify_token'];
@@ -35,9 +33,8 @@ app.get('/webhook', (req, res) => {
     }
 });
 
-// WhatsApp Messages Handling & Gemini AI Reply (POST Request)
 app.post('/webhook', async (req, res) => {
-    res.sendStatus(200); // Meta ko foran acknowledge karne ke liye
+    res.sendStatus(200);
 
     try {
         const body = req.body;
@@ -53,15 +50,11 @@ app.post('/webhook', async (req, res) => {
                 const userMessage = message.text.body; 
                 console.log(`Received message from ${senderPhone}: ${userMessage}`);
 
-                // Call Google Gemini AI for smart reply
-                const response = await ai.models.generateContent({
-                    model: 'gemini-1.5-flash',
-                    contents: userMessage,
-                });
+                // Generate smart reply using Gemini AI
+                const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+                const result = await model.generateContent(userMessage);
+                const aiReply = result.response.text() || "Main abhi iska jawab nahi de sakta.";
 
-                const aiReply = response.text || "Main abhi iska jawab nahi de sakta.";
-
-                // Send reply back via WhatsApp Cloud API
                 await axios.post(
                     `https://graph.facebook.com/v17.0/${PHONE_NUMBER_ID}/messages`,
                     {
@@ -85,7 +78,6 @@ app.post('/webhook', async (req, res) => {
     }
 });
 
-// Server Port Binding
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
