@@ -1,21 +1,19 @@
 const express = require('express');
+const bodyParser = require('body-parser');
 const axios = require('axios');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 
 const app = express();
-app.use(express.json());
+app.use(bodyParser.json());
+
+// Initialize Google Gemini AI
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 const VERIFY_TOKEN = process.env.VERIFY_TOKEN;
 const WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN;
 const PHONE_NUMBER_ID = process.env.PHONE_NUMBER_ID;
 
-// Initialize Gemini client with API Key
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-
-app.get('/', (req, res) => {
-    res.send('Server is active and running with Gemini AI!');
-});
-
+// Webhook verification (GET)
 app.get('/webhook', (req, res) => {
     const mode = req.query['hub.mode'];
     const token = req.query['hub.verify_token'];
@@ -33,10 +31,10 @@ app.get('/webhook', (req, res) => {
     }
 });
 
+// Webhook message receiver (POST)
 app.post('/webhook', async (req, res) => {
     res.sendStatus(200);
 
-    // Yeh line har aane wali request ko logs mein print karegi
     console.log('Webhook POST received:', JSON.stringify(req.body, null, 2));
 
     try {
@@ -49,15 +47,15 @@ app.post('/webhook', async (req, res) => {
             const message = value?.messages?.[0];
 
             if (message && message.type === 'text') {
-                const senderPhone = message.from; 
-                const userMessage = message.text.body; 
+                const senderPhone = message.from;
+                const userMessage = message.text.body;
                 console.log(`Received message from ${senderPhone}: ${userMessage}`);
 
-                // Generate smart reply using Gemini AI
+                // Generate smart reply using Gemini AI (Using gemini-pro)
                 const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
-const result = await model.generateContent(userMessage);
-const aiReply = result.response.text() || "Main abhi iska jawab nahi de sakta.";
-                
+                const result = await model.generateContent(userMessage);
+                const aiReply = result.response.text() || "Main abhi iska jawab nahi de sakta.";
+
                 await axios.post(
                     `https://graph.facebook.com/v17.0/${PHONE_NUMBER_ID}/messages`,
                     {
@@ -77,11 +75,11 @@ const aiReply = result.response.text() || "Main abhi iska jawab nahi de sakta.";
             }
         }
     } catch (error) {
-        console.error('Error handling webhook:', error.response ? error.response.data : error.message);
+        console.error('Error handling webhook:', error.response ? error.response.data : error);
     }
 });
 
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
+    console.log(`Server is active and running on port ${PORT}`);
 });
