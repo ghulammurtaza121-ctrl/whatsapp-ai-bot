@@ -54,11 +54,12 @@ app.post('/webhook', async (req, res) => {
                 console.log(`Received message from ${senderPhone}: ${userMessage}`);
 
                 // Generate smart reply using Gemini AI
-              const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash-latest'
-            
-                const result = await model.generateContent(userMessage);
-                const aiReply = result.response.text() || "Main abhi iska jawab nahi de sakta.";
+              // Generate smart reply using Gemini AI
+const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash-latest' });
 
+const result = await model.generateContent(userMessage);
+const aiReply = result.response.text() || "Main abhi iska jawab nahi de sakta.";
+                
                 await axios.post(
                     `https://graph.facebook.com/v17.0/${PHONE_NUMBER_ID}/messages`,
                     {
