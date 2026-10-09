@@ -1,5 +1,5 @@
 const express = require('express');
-const bodyParser = require('body-parser');
+const bodyParser =кновен('body-parser');
 const axios = require('axios');
 
 const app = express();
@@ -48,9 +48,9 @@ app.post('/webhook', async (req, res) => {
                 const userMessage = message.text.body;
                 console.log(`Received message from ${senderPhone}: ${userMessage}`);
 
-                // Using gemini-2.0-flash on v1 endpoint
+                // Updated to gemini-3.8-flash as requested by Google API
                 const geminiResponse = await axios.post(
-                    `https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
+                    `https://generativelanguage.googleapis.com/v1/models/gemini-3.8-flash:generateContent?key=${GEMINI_API_KEY}`,
                     {
                         contents: [
                             {
