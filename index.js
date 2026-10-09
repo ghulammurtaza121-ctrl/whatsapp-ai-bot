@@ -1,7 +1,42 @@
+const express = require('express');
+const axios = require('axios');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
+
+const app = express();
+app.use(express.json());
+
+const VERIFY_TOKEN = process.env.VERIFY_TOKEN;
+const WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN;
+const PHONE_NUMBER_ID = process.env.PHONE_NUMBER_ID;
+
+// Initialize Gemini client with API Key
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+
+app.get('/', (req, res) => {
+    res.send('Server is active and running with Gemini AI!');
+});
+
+app.get('/webhook', (req, res) => {
+    const mode = req.query['hub.mode'];
+    const token = req.query['hub.verify_token'];
+    const challenge = req.query['hub.challenge'];
+
+    if (mode && token) {
+        if (mode === 'subscribe' && token === VERIFY_TOKEN) {
+            console.log('WEBHOOK_VERIFIED');
+            res.status(200).send(challenge);
+        } else {
+            res.sendStatus(403);
+        }
+    } else {
+        res.sendStatus(400);
+    }
+});
+
 app.post('/webhook', async (req, res) => {
     res.sendStatus(200);
 
-    // Yeh line har aane wali request ko logs mein dikhayegi
+    // Yeh line har aane wali request ko logs mein print karegi
     console.log('Webhook POST received:', JSON.stringify(req.body, null, 2));
 
     try {
@@ -45,4 +80,9 @@ app.post('/webhook', async (req, res) => {
     } catch (error) {
         console.error('Error handling webhook:', error.response ? error.response.data : error.message);
     }
+});
+
+const PORT = process.env.PORT || 10000;
+app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
 });
