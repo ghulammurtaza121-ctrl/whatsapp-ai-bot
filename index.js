@@ -48,9 +48,9 @@ app.post('/webhook', async (req, res) => {
                 const userMessage = message.text.body;
                 console.log(`Received message from ${senderPhone}: ${userMessage}`);
 
-                // Direct Gemini API call via Axios (Bypassing SDK errors)
+                // Using gemini-2.0-flash on v1 endpoint
                 const geminiResponse = await axios.post(
-                    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+                    `https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
                     {
                         contents: [
                             {
