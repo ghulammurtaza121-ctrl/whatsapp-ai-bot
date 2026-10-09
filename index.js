@@ -1,17 +1,14 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const axios = require('axios');
-const { GoogleGenerativeAI } = require('@google/generative-ai');
 
 const app = express();
 app.use(bodyParser.json());
 
-// Initialize Google Gemini AI
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-
 const VERIFY_TOKEN = process.env.VERIFY_TOKEN;
 const WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN;
 const PHONE_NUMBER_ID = process.env.PHONE_NUMBER_ID;
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
 // Webhook verification (GET)
 app.get('/webhook', (req, res) => {
@@ -51,11 +48,26 @@ app.post('/webhook', async (req, res) => {
                 const userMessage = message.text.body;
                 console.log(`Received message from ${senderPhone}: ${userMessage}`);
 
-                // Generate smart reply using Gemini AI (Using gemini-1.5-flash)
-                const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-                const result = await model.generateContent(userMessage);
-                const aiReply = result.response.text() || "Main abhi iska jawab nahi de sakta.";
+                // Direct Gemini API call via Axios (Bypassing SDK errors)
+                const geminiResponse = await axios.post(
+                    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+                    {
+                        contents: [
+                            {
+                                parts: [{ text: userMessage }]
+                            }
+                        ]
+                    },
+                    {
+                        headers: { 'Content-Type': 'application/json' }
+                    }
+                );
 
+                const aiReply = 
+                    geminiResponse.data?.candidates?.[0]?.content?.parts?.[0]?.text || 
+                    "Main abhi iska jawab nahi de sakta.";
+
+                // Send reply back to WhatsApp
                 await axios.post(
                     `https://graph.facebook.com/v17.0/${PHONE_NUMBER_ID}/messages`,
                     {
