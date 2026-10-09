@@ -51,8 +51,8 @@ app.post('/webhook', async (req, res) => {
                 const userMessage = message.text.body;
                 console.log(`Received message from ${senderPhone}: ${userMessage}`);
 
-                // Generate smart reply using Gemini AI (Using gemini-pro)
-                const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
+                // Generate smart reply using Gemini AI (Using gemini-2.0-flash)
+                const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
                 const result = await model.generateContent(userMessage);
                 const aiReply = result.response.text() || "Main abhi iska jawab nahi de sakta.";
 
